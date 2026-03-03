@@ -259,7 +259,30 @@ const Admin = () => {
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
+            <div className="mt-6 text-center space-y-3">
+              {!isSignUp && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!email) {
+                      setAuthError(t('validEmailError') || 'Please enter your email first');
+                      return;
+                    }
+                    setAuthError('');
+                    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                      redirectTo: `${window.location.origin}/reset-password`,
+                    });
+                    if (error) {
+                      setAuthError(error.message);
+                    } else {
+                      setAuthSuccess(t('resetPasswordEmail'));
+                    }
+                  }}
+                  className="text-sm text-muted-foreground hover:text-primary hover:underline block w-full"
+                >
+                  {t('forgotPassword')}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {

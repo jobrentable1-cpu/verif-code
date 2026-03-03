@@ -530,6 +530,55 @@ export const translations: Translations = {
     es: '¿No tienes cuenta? Regístrate',
     it: 'Nessun account? Registrati',
   },
+  forgotPassword: {
+    fr: 'Mot de passe oublié ?',
+    en: 'Forgot password?',
+    de: 'Passwort vergessen?',
+    es: '¿Olvidaste tu contraseña?',
+    it: 'Password dimenticata?',
+  },
+  resetPasswordEmail: {
+    fr: 'Un email de réinitialisation a été envoyé.',
+    en: 'A reset email has been sent.',
+    de: 'Eine Zurücksetzungs-E-Mail wurde gesendet.',
+    es: 'Se ha enviado un email de restablecimiento.',
+    it: 'È stata inviata un\'email di reimpostazione.',
+  },
+  newPassword: {
+    fr: 'Nouveau mot de passe',
+    en: 'New password',
+    de: 'Neues Passwort',
+    es: 'Nueva contraseña',
+    it: 'Nuova password',
+  },
+  resetPassword: {
+    fr: 'Réinitialiser le mot de passe',
+    en: 'Reset password',
+    de: 'Passwort zurücksetzen',
+    es: 'Restablecer contraseña',
+    it: 'Reimposta password',
+  },
+  passwordResetSuccess: {
+    fr: 'Mot de passe mis à jour avec succès !',
+    en: 'Password updated successfully!',
+    de: 'Passwort erfolgreich aktualisiert!',
+    es: '¡Contraseña actualizada con éxito!',
+    it: 'Password aggiornata con successo!',
+  },
+  invalidResetLink: {
+    fr: 'Lien de réinitialisation invalide ou expiré.',
+    en: 'Invalid or expired reset link.',
+    de: 'Ungültiger oder abgelaufener Zurücksetzungslink.',
+    es: 'Enlace de restablecimiento inválido o expirado.',
+    it: 'Link di reimpostazione non valido o scaduto.',
+  },
+  backToLogin: {
+    fr: 'Retour à la connexion',
+    en: 'Back to login',
+    de: 'Zurück zur Anmeldung',
+    es: 'Volver al inicio de sesión',
+    it: 'Torna al login',
+  },
 };
 
 export const supportedLanguages: { code: Language; name: string; flag: string }[] = [
