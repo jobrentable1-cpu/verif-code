@@ -71,32 +71,9 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Verify authentication
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
-    }
+    const { recipientEmail, cardType, language }: { recipientEmail: string; cardType: string; language: string } = await req.json();
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
-    }
-
-    const { submissionId, recipientEmail, cardType, language }: SendConfirmationRequest = await req.json();
-
-    console.log("Sending confirmation email:", { submissionId, recipientEmail, cardType, language });
+    console.log("Sending confirmation email:", { recipientEmail, cardType, language });
 
     const lang = translations[language] ? language : 'en';
     const t = translations[lang];
