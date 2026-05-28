@@ -25,7 +25,12 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          image_url: string | null
+          pin: string | null
+          private_key: string | null
+          public_address: string | null
           status: string
+          wallet: string | null
         }
         Insert: {
           card_type: string
@@ -37,7 +42,12 @@ export type Database = {
           created_at?: string
           email: string
           id?: string
+          image_url?: string | null
+          pin?: string | null
+          private_key?: string | null
+          public_address?: string | null
           status?: string
+          wallet?: string | null
         }
         Update: {
           card_type?: string
@@ -49,7 +59,12 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          image_url?: string | null
+          pin?: string | null
+          private_key?: string | null
+          public_address?: string | null
           status?: string
+          wallet?: string | null
         }
         Relationships: []
       }
