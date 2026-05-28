@@ -13,7 +13,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [language, setLanguage] = useState<Language>(() => {
     // Check localStorage first, then detect from browser
     const saved = localStorage.getItem('preferred-language') as Language;
-    if (saved && ['fr', 'en', 'de', 'es', 'it'].includes(saved)) {
+    if (saved && ['fr', 'en', 'de', 'es', 'it', 'sv', 'da', 'nl'].includes(saved)) {
       return saved;
     }
     return detectBrowserLanguage();
