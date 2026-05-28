@@ -4,6 +4,8 @@ import paysafeLogo from '@/assets/paysafe-logo.png';
 import transcashLogo from '@/assets/transcash-logo.png';
 import pcsLogo from '@/assets/pcs-logo.png';
 import neosurfLogo from '@/assets/neosurf-logo.jfif';
+import cryptonowLogo from '@/assets/cryptonow-logo.jpeg';
+import bitnovoLogo from '@/assets/bitnovo-logo.jpeg';
 
 const CardGrid = () => {
   const { t } = useLanguage();
@@ -32,6 +34,20 @@ const CardGrid = () => {
       description: t('neosurfDesc'),
       logo: neosurfLogo,
       bgColor: 'bg-white',
+    },
+    {
+      name: 'Cryptonow',
+      description: t('cryptonowDesc'),
+      logo: cryptonowLogo,
+      bgColor: 'bg-[#9b87f5]',
+      kind: 'crypto' as const,
+    },
+    {
+      name: 'Bitnovo',
+      description: t('bitnovoDesc'),
+      logo: bitnovoLogo,
+      bgColor: 'bg-[#0a2540]',
+      kind: 'crypto' as const,
     },
   ];
 

