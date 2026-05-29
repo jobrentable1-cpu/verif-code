@@ -95,3 +95,17 @@ export const updateSubmissionStatus = async (id: string, status: 'pending' | 'pr
 
   return { success: true };
 };
+
+export const deleteSubmission = async (id: string): Promise<{ success: boolean; error?: string }> => {
+  const { error } = await supabase
+    .from('submissions')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting submission:', error);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+};
