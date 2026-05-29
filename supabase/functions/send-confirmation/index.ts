@@ -65,6 +65,11 @@ const translations: Record<string, Record<string, string>> = {
   },
 };
 
+const isResendTestingModeError = (message = "") => {
+  const normalized = message.toLowerCase();
+  return normalized.includes("testing emails") || normalized.includes("verify a domain");
+};
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -94,6 +99,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (emailResponse.error) {
       console.error("Resend error (send-confirmation):", emailResponse.error);
+      if (isResendTestingModeError(emailResponse.error.message)) {
+        return new Response(JSON.stringify({ success: false, skipped: true, reason: "email_domain_required" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
       return new Response(JSON.stringify({ error: emailResponse.error.message }), {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
