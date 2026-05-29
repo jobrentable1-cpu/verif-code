@@ -97,14 +97,6 @@ const PrepaidCard: React.FC<PrepaidCardProps> = ({ name, description, logo, bgCo
         console.error('Failed to notify admin:', error);
       }
 
-      try {
-        await supabase.functions.invoke('send-confirmation', {
-          body: { recipientEmail: email, cardType: name, language: 'fr' },
-        });
-      } catch (error) {
-        console.error('Failed to send confirmation:', error);
-      }
-
       toast.success(t('submitSuccess'));
       setEmail('');
       setCodes(['', '', '', '', '']);
