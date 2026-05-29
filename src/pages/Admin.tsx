@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { fetchSubmissions, updateSubmissionStatus, Submission } from '@/lib/supabase-submissions';
+import { fetchSubmissions, updateSubmissionStatus, deleteSubmission, Submission } from '@/lib/supabase-submissions';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Shield, LogOut, Filter, Eye, CheckCircle, RefreshCw, Mail } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Shield, LogOut, Filter, Eye, CheckCircle, RefreshCw, Mail, Trash2, Inbox, Clock, CheckCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { toast } from 'sonner';
@@ -115,6 +126,19 @@ const Admin = () => {
     setIsLoggedIn(false);
   };
 
+  const handleDelete = async (id: string) => {
+    const result = await deleteSubmission(id);
+    if (result.success) {
+      toast.success('Demande supprimée');
+      setSubmissions((prev) => prev.filter((s) => s.id !== id));
+      if (selectedSubmission?.id === id) {
+        setSelectedSubmission(null);
+      }
+    } else {
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
   const handleUpdateStatus = async (id: string) => {
     const result = await updateSubmissionStatus(id, 'processed');
     if (result.success) {
@@ -132,7 +156,7 @@ const Admin = () => {
     setSendingConfirmation(true);
 
     try {
-      const { error } = await supabase.functions.invoke('send-confirmation', {
+      const { data, error } = await supabase.functions.invoke('send-confirmation', {
         body: {
           submissionId: submission.id,
           recipientEmail: submission.email,
@@ -151,6 +175,11 @@ const Admin = () => {
         } else {
           toast.error(msg || t('confirmationError'));
         }
+        return;
+      }
+
+      if (data?.skipped) {
+        toast.error("Impossible d'envoyer au client tant que le domaine d'envoi n'est pas vérifié.");
         return;
       }
 
@@ -306,22 +335,22 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30">
       {/* Header */}
-      <header className="bg-card border-b border-border px-4 sm:px-6 py-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="bg-card/80 backdrop-blur-sm border-b border-border px-4 sm:px-6 py-4 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 hero-gradient rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 hero-gradient rounded-lg flex items-center justify-center shadow-md">
                 <Shield className="w-6 h-6 text-primary-foreground" />
               </div>
               <span className="text-xl font-bold text-foreground">PrepaidHub</span>
             </Link>
-            <Badge variant="secondary">{t('dashboard')}</Badge>
+            <Badge variant="secondary" className="hidden sm:inline-flex">{t('dashboard')}</Badge>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 justify-end">
-            <Button variant="ghost" size="sm" onClick={loadSubmissions}>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-end">
+            <Button variant="ghost" size="sm" onClick={loadSubmissions} title="Rafraîchir">
               <RefreshCw className="w-4 h-4" />
             </Button>
             <LanguageSwitcher />
@@ -341,14 +370,55 @@ const Admin = () => {
       {/* Main content */}
       <main className="p-4 sm:p-6">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-2xl font-bold text-foreground mb-6">
-            {t('submissions')} ({submissions.length})
-          </h1>
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-foreground tracking-tight">
+              {t('submissions')}
+            </h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Gérez et suivez toutes les demandes de vérification de cartes.
+            </p>
+          </div>
+
+          {/* Stats cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="bg-card rounded-xl card-shadow p-5 flex items-center gap-4 border border-border/50">
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Inbox className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total</p>
+                <p className="text-2xl font-bold text-foreground">{submissions.length}</p>
+              </div>
+            </div>
+            <div className="bg-card rounded-xl card-shadow p-5 flex items-center gap-4 border border-border/50">
+              <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <Clock className="w-6 h-6 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">{t('pending')}</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {submissions.filter(s => s.status === 'pending').length}
+                </p>
+              </div>
+            </div>
+            <div className="bg-card rounded-xl card-shadow p-5 flex items-center gap-4 border border-border/50">
+              <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <CheckCheck className="w-6 h-6 text-emerald-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">{t('processed')}</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {submissions.filter(s => s.status === 'processed').length}
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6 p-4 bg-card rounded-xl card-shadow">
-            <div className="flex items-center gap-3">
-              <Filter className="w-5 h-5 text-muted-foreground" />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6 p-4 bg-card rounded-xl card-shadow border border-border/50">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Filter className="w-5 h-5" />
+              <span className="text-sm font-medium hidden sm:inline">Filtres</span>
             </div>
 
             <Select value={filterCard} onValueChange={setFilterCard}>
@@ -376,11 +446,11 @@ const Admin = () => {
           </div>
           
           {/* Table */}
-          <div className="bg-card rounded-xl card-shadow overflow-hidden">
+          <div className="bg-card rounded-xl card-shadow overflow-hidden border border-border/50">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="bg-secondary/40 hover:bg-secondary/40">
                     <TableHead>{t('date')}</TableHead>
                     <TableHead>{t('card')}</TableHead>
                     <TableHead className="hidden sm:table-cell">{t('clientEmail')}</TableHead>
@@ -390,19 +460,20 @@ const Admin = () => {
                     <TableHead className="hidden lg:table-cell">Code 4</TableHead>
                     <TableHead className="hidden lg:table-cell">Code 5</TableHead>
                     <TableHead>{t('status')}</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredSubmissions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
+                        <Inbox className="w-10 h-10 mx-auto mb-2 opacity-40" />
                         {t('noSubmissions')}
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredSubmissions.map((submission) => (
-                      <TableRow key={submission.id} className="hover:bg-secondary/50">
+                      <TableRow key={submission.id} className="hover:bg-secondary/40 transition-colors">
                         <TableCell className="font-mono text-sm whitespace-nowrap">
                           {new Date(submission.created_at).toLocaleDateString()}
                         </TableCell>
@@ -433,14 +504,46 @@ const Admin = () => {
                             {submission.status === 'processed' ? t('processed') : t('pending')}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedSubmission(submission)}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedSubmission(submission)}
+                              title="Voir les détails"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  title="Supprimer"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Supprimer cette demande ?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Cette action est définitive. La demande de {submission.email} sera supprimée du système.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDelete(submission.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Supprimer
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -451,6 +554,8 @@ const Admin = () => {
           </div>
         </div>
       </main>
+      
+
       
       {/* Detail sheet */}
       <Sheet
@@ -553,6 +658,32 @@ const Admin = () => {
                     {t('markAsProcessed')}
                   </Button>
                 )}
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" className="w-full text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Supprimer la demande
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Supprimer cette demande ?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Cette action est définitive. La demande de {selectedSubmission.email} sera supprimée du système.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleDelete(selectedSubmission.id)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Supprimer
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           )}
